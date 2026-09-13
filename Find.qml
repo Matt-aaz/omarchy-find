@@ -100,6 +100,14 @@ Item {
   property int contentMargin: Style.spacing.panelPadding
   property int contentSpacing: Style.spacing.md
   property int headerHeight: Math.max(Style.space(34), Style.font.title + Style.spacing.controlPaddingY * 2)
+  // The search field grows to wrap a long query across up to maxSearchLines
+  // lines instead of eliding to one. Measured from queryText.implicitHeight
+  // (the same wrap-aware idiom as card.aiBoxHeight below); the Math.max floors
+  // it at the single-line headerHeight so short/empty queries stay compact.
+  property int maxSearchLines: 4
+  readonly property int searchBoxHeight: queryText.implicitHeight > 0
+    ? Math.max(root.headerHeight, Math.min(queryText.implicitHeight + Style.spacing.controlPaddingY * 2, root.headerHeight * root.maxSearchLines))
+    : root.headerHeight
   // Safe clearance margins: guarantees the centered card never crowds or touches
   // screen edges, top/bottom bars, docks, or borders across resolutions and scale factors.
   readonly property int safeMarginY: panel && panel.height > 0
@@ -227,7 +235,10 @@ Item {
       activeFilter: root.activeFilter,
       filterText: root.filterText,
       count: displayModel.count,
-      searching: root.searching
+      searching: root.searching,
+      headerHeight: root.headerHeight,
+      searchBoxHeight: root.searchBoxHeight,
+      maxSearchLines: root.maxSearchLines
     })
   }
 
@@ -1094,19 +1105,19 @@ Item {
     BorderSurface {
       id: card
       width: root.cardWidth
-      readonly property int aiMaxBoxHeight: Math.max(0, root.cardHeight - root.headerHeight - root.aiChipRowHeight - footer.implicitHeight - root.contentSpacing * 3 - card.contentTopInset - card.contentBottomInset)
+      readonly property int aiMaxBoxHeight: Math.max(0, root.cardHeight - root.searchBoxHeight - root.aiChipRowHeight - footer.implicitHeight - root.contentSpacing * 3 - card.contentTopInset - card.contentBottomInset)
       readonly property int aiBoxHeight: (root.aiSession && root.aiSession.state !== "idle" && aiAnswerText.text.length > 0)
         ? Math.min(card.aiMaxBoxHeight, aiAnswerText.implicitHeight + Style.spacing.sm * 2)
         : 0
       height: root.expanded
         ? (root.isGoogleSearch
             ? (root.googleSearchTerms !== ""
-                ? (root.headerHeight + root.rowHeight + footer.implicitHeight + root.contentSpacing * 2 + card.contentTopInset + card.contentBottomInset)
-                : (root.headerHeight + card.contentTopInset + card.contentBottomInset))
+                ? (root.searchBoxHeight + root.rowHeight + footer.implicitHeight + root.contentSpacing * 2 + card.contentTopInset + card.contentBottomInset)
+                : (root.searchBoxHeight + card.contentTopInset + card.contentBottomInset))
             : root.isAiMode
-              ? (root.headerHeight + root.aiChipRowHeight + card.aiBoxHeight + footer.implicitHeight + (card.aiBoxHeight > 0 ? root.contentSpacing * 3 : root.contentSpacing * 2) + card.contentTopInset + card.contentBottomInset)
+              ? (root.searchBoxHeight + root.aiChipRowHeight + card.aiBoxHeight + footer.implicitHeight + (card.aiBoxHeight > 0 ? root.contentSpacing * 3 : root.contentSpacing * 2) + card.contentTopInset + card.contentBottomInset)
               : root.cardHeight)
-        : root.headerHeight + card.contentTopInset + card.contentBottomInset
+        : root.searchBoxHeight + card.contentTopInset + card.contentBottomInset
       radius: root.cornerRadius
       anchors.centerIn: parent
 
@@ -1282,7 +1293,7 @@ Item {
         Rectangle {
           id: searchField
           width: parent.width
-          height: root.headerHeight
+          height: root.searchBoxHeight
           radius: root.cornerRadius
           color: "transparent"
 
@@ -1298,18 +1309,21 @@ Item {
           }
 
           Text {
+            id: queryText
+            // Wrap instead of eliding. width comes from the parent searchField
+            // (same numeric-width idiom as the AI answer text, which is what
+            // makes implicitHeight wrap-aware); top-anchored so it grows down.
             anchors.left: searchIcon.right
             anchors.leftMargin: Style.spacing.sm
-            anchors.right: expandButton.left
-            anchors.rightMargin: Style.spacing.sm
-            anchors.verticalCenter: parent.verticalCenter
+            anchors.top: parent.top
+            width: searchField.width - Style.spacing.sm * 2
             text: root.filterText || Backend.t("searchPlaceholder", root.locale)
             textFormat: Text.PlainText
             color: root.foreground
             opacity: root.filterText ? 1 : 0.58
             font.family: root.fontFamily
             font.pixelSize: Style.font.heading
-            elide: Text.ElideRight
+            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
           }
 
           Rectangle {
