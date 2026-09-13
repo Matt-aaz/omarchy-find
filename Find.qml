@@ -1120,6 +1120,12 @@ Item {
 
       MouseArea { anchors.fill: parent; onClicked: {} }
 
+      TextEdit {
+        id: pasteBuffer
+        visible: false
+        textFormat: TextEdit.PlainText
+      }
+
       Item {
         id: keyCatcher
         anchors.fill: parent
@@ -1167,6 +1173,16 @@ Item {
             } else {
               event.accepted = true
             }
+          } else if (event.matches(StandardKey.Paste) ||
+                     (event.key === Qt.Key_V && event.modifiers === (Qt.ControlModifier | Qt.ShiftModifier))) {
+            // The displayed query is Text, so it has no native paste action.
+            // Use Qt's clipboard reader without spawning a shell or submitting.
+            pasteBuffer.clear()
+            pasteBuffer.paste()
+            var pasted = pasteBuffer.text.replace(/[\r\n\t\u2028\u2029]/g, " ")
+            pasteBuffer.clear()
+            if (pasted.length > 0) root.setFilter(root.filterText + pasted)
+            event.accepted = true
           } else if (Util.editsFilter(event, root.filterText)) {
             root.setFilter(Util.editedFilter(event, root.filterText))
             event.accepted = true
