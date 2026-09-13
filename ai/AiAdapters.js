@@ -599,7 +599,51 @@ var piAdapter = {
   }
 }
 
+// ---------------------------------------------------------------- Hermes ---
+// Hermes -Q emits the final answer as plain stdout, not NDJSON/token deltas.
+// Its authoritative session_id is emitted on stderr after the run completes.
+var hermesAdapter = {
+  id: "hermes",
+  label: "Hermes",
+  binary: "hermes",
+  capabilities: {
+    continuity: "returned-id",
+    modelOverride: true,
+    webSearchDetection: false,
+    resumeBeforeExit: false
+  },
+  createSessionRef: function() { return null },
+  buildRun: function(prompt, sessionRef, config) {
+    var argv = ["hermes", "chat", "--oneshot", "-Q"]
+    if (config && config.model) argv.push("--model", config.model)
+    argv.push("-q", prompt)
+    return argv
+  },
+  buildResume: function(sessionRef, config) {
+    var argv = ["hermes", "chat", "--resume", sessionRef]
+    if (config && config.model) argv.push("--model", config.model)
+    return argv
+  },
+  parseLine: function(line, ps) {
+    // The installed CLI prints this startup diagnostic even under -Q.
+    // Suppress only this known pre-answer line, not arbitrary answer warnings.
+    if (!ps.answerStarted && String(line).indexOf("Warning: Unknown toolsets: ") === 0) return []
+    ps.answerStarted = true
+    return [{ type: "text", text: String(line) + "\n" }]
+  },
+  parseStderr: function(text) {
+    var pattern = /(?:^|\n)session_id: ([A-Za-z0-9_-]+)\s*(?=\n|$)/g
+    var match, ref = null
+    while ((match = pattern.exec(text)) !== null) ref = match[1]
+    return ref ? [{ type: "session", sessionRef: ref }] : []
+  },
+  classifyFailure: function(exitCode, stderrText) {
+    return classifyGeneric(stderrText)
+  }
+}
+
 var ADAPTERS = {
+  hermes: hermesAdapter,
   claude: claudeAdapter,
   codex: codexAdapter,
   agy: agyAdapter,

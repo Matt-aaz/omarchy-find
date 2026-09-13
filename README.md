@@ -1,4 +1,26 @@
-# Omarchy Find
+# Omarchy Find — Hermes fork
+
+A customised fork of [jesseburlamaque/omarchy-find](https://github.com/jesseburlamaque/omarchy-find), retaining the original MIT license and project history.
+
+## Hermes support
+
+This fork adds Hermes Agent as an AI provider, including multiline answers and exact-session terminal handoff. Install and authenticate [Hermes Agent](https://hermes-agent.nousresearch.com/docs/) separately, and ensure `hermes` is on your desktop shell's `PATH`.
+
+To select Hermes only for Omarchy Find, create or edit `~/.config/omarchy-find/ai.json` (preserving any existing settings):
+
+```json
+{
+  "agent": "hermes"
+}
+```
+
+Hermes uses its existing local model/provider configuration unless you set a `model` override. Credentials, private configuration, and conversations are not included in this repository. The adapter runs `hermes chat --oneshot -Q`; the completed answer is revealed in the overlay, rather than streamed token by token. Press Enter after completion to resume the exact session in a terminal.
+
+The fork retains plugin ID `jesseburlamaque.omarchy-find` for compatibility. It replaces the original plugin rather than installing alongside it. Existing installations may still point at the upstream repository for updates; merely cloning this fork does not change the installed plugin's update source.
+
+Run the regression suite with `node tests/ai_unit_test.js`.
+
+---
 
 A fast, elegant, keyboard-driven universal file search and quick launcher for the [Omarchy](https://github.com/basecamp/omarchy) shell on Linux.
 
@@ -116,7 +138,7 @@ Omarchy Find will immediately detect the change and resume using whichever agent
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/jesseburlamaque/omarchy-find.git --enable
+omarchy plugin add https://github.com/Matt-aaz/omarchy-find.git --enable
 omarchy restart shell
 ```
 

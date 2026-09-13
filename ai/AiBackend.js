@@ -314,6 +314,11 @@ function handleExit(gen, exitCode) {
   if (session.state === State.Error) return snapshot()
 
   var adapter = AiAdapters.get(session.adapterId)
+  // Some CLIs return session metadata on stderr rather than stdout events.
+  if (adapter && adapter.parseStderr) {
+    var stderrEvents = adapter.parseStderr(session.stderrText)
+    for (var i = 0; i < stderrEvents.length; i++) applyEvent(stderrEvents[i])
+  }
 
   // Defense in depth: no deltas were captured on the way through, but the
   // adapter did see one authoritative final string (e.g. Claude's "result"

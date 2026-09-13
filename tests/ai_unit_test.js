@@ -1105,6 +1105,24 @@ for (const id of ["claude", "codex", "agy", "opencode", "pi"]) {
   }
 }
 
+// Hermes quiet CLI emits answer lines on stdout and session metadata on stderr.
+{
+  const cfg = AiBackend.loadConfig('{"agent":"hermes"}', 'claude')
+  eq(cfg.config.agent, "hermes", "Hermes override is accepted")
+  AiBackend.cancel()
+  const run = AiBackend.beginGeneration("literal $(touch /tmp/nope) prompt")
+  eq(run.argv, ["setsid", "hermes", "chat", "--oneshot", "-Q", "-q", "literal $(touch /tmp/nope) prompt"], "Hermes prompt stays a literal argv value")
+  AiBackend.handleLine(run.generation, "Warning: Unknown toolsets: a2a")
+  AiBackend.handleLine(run.generation, "Hello")
+  AiBackend.handleLine(run.generation, "")
+  AiBackend.handleLine(run.generation, "World")
+  AiBackend.handleStderrChunk(run.generation, "Warning: unrelated\nsession_id: 20000101_000000_abcdef\n")
+  AiBackend.handleExit(run.generation, 0)
+  const ready = drainToReady()
+  eq(ready.displayedText, "Hello\n\nWorld\n", "Hermes preserves multiline answer without stderr warnings")
+  eq(AiBackend.buildHandoffArgv(), ["hermes", "chat", "--resume", "20000101_000000_abcdef"], "Hermes resumes the exact returned session")
+}
+
 // ------------------------------------------------------------- summary ----
 
 console.log("")
